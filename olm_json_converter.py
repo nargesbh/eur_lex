@@ -97,10 +97,11 @@ def process_pdf(pdf_path, model, processor, device):
 
 # === Define input and output folders ===
 category_paths = {
-    "category10": "/home/4baba/EUR_lex/pdfs_2024/category10/*/*.pdf",
-    "category19": "/home/4baba/EUR_lex/pdfs_2024/category19/*/*.pdf",
+    "category10": "/ltstorage/home/4baba/EUR_lex/pdfs_2024/category10/*/*.pdf",
+    "category19": "/ltstorage/home/4baba/EUR_lex/pdfs_2024/category19/*/*.pdf",
 }
-output_folder_base = "/home/4baba/EUR_lex/converted_json"
+output_folder_base = "/ltstorage/home/4baba/EUR_lex/converted_json"
+pdf_base_path = '/ltstorage/home/4baba/EUR_lex/pdfs_2024/'
 
 # === Collect all PDF jobs ===
 pdf_jobs = []
@@ -108,8 +109,9 @@ for category, pattern in category_paths.items():
     pdf_files = sorted(glob.glob(pattern))
     
     for pdf_file in pdf_files:
-        # Get path relative to the category root
-        relative_path = os.path.relpath(pdf_file, f"/home/4baba/EUR_lex/pdfs_2024/{category}")
+        # Create base path for the category
+        category_root = os.path.join(pdf_base_path, category)
+        relative_path = os.path.relpath(pdf_file, category_root)
 
         # Replace .pdf with .json, but keep directory structure
         json_relative_path = os.path.splitext(relative_path)[0] + ".json"
@@ -127,7 +129,7 @@ print(f"Found {len(pdf_jobs)} PDFs to process.")
 
 # === Load model once ===
 print(" Loading model and processor...")
-torch.cuda.set_device(1)  # Use GPU 1 (A100)
+torch.cuda.set_device(4)  # Use GPU 4
 device = torch.device("cuda")
 
 
