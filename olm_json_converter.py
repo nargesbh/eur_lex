@@ -129,7 +129,7 @@ print(f"Found {len(pdf_jobs)} PDFs to process.")
 
 # === Load model once ===
 print(" Loading model and processor...")
-torch.cuda.set_device(4)  # Use GPU 4
+# torch.cuda.set_device(4)  
 device = torch.device("cuda")
 
 
