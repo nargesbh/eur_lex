@@ -1,104 +1,255 @@
-import os
-import csv
 import json
 import re
-from bs4 import BeautifulSoup
+from pathlib import Path
 from collections import Counter
+from bs4 import BeautifulSoup
 from tqdm import tqdm
+import pandas as pd
 
+def clean_html(html_content: str) -> str:
+    soup = BeautifulSoup(html_content, "html.parser")
 
-def clean_html(html: str) -> str:
-    soup = BeautifulSoup(html, "html.parser")
-    for tag in soup.find_all(True):
-        for attribute in ["style", "class", "id", "width", "height"]:
-            tag.attrs.pop(attribute, None)
-    for element in soup.find_all(string=True):
-        clean_text = re.sub(r"\$\s+(\d+)", r"$\1", element.strip())
-        clean_text = re.sub(r"(\.\s*)+", " ", clean_text)
-        element.replace_with(clean_text)
-    return " ".join(soup.stripped_strings).lower()
+    # Extract normal text from outside tables
+    normal_text = " ".join(soup.stripped_strings)
 
-def content2_similarity(html1: str, html2: str) -> float:
+    # Extract text inside tables separately and flatten
+    table_texts = []
+    for table in soup.find_all("table"):
+        for cell in table.find_all(["td", "th"]):
+            cell_text = cell.get_text(separator=" ", strip=True)
+            table_texts.append(cell_text)
+
+    # Combine normal text and table text
+    combined_text = normal_text + " " + " ".join(table_texts)
+
+    # Clean spacing and punctuation artifacts
+    combined_text = re.sub(r"\s+", " ", combined_text)
+    combined_text = combined_text.lower().strip()
+
+    return combined_text
+
+def extract_natural_text(json_path: Path) -> str:
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    texts = []
+    for page in data.get("pages", []):
+        natural_text = page.get("natural_text", "")
+        if isinstance(natural_text, str):
+            try:
+                parsed = json.loads(natural_text)
+                if isinstance(parsed, dict) and "natural_text" in parsed:
+                    natural_text = parsed["natural_text"]
+            except json.JSONDecodeError:
+                pass
+        texts.append(natural_text)
+
+    full_text = " \n ".join(texts)
+
+    # Split into lines
+    lines = full_text.splitlines()
+    normal_lines = []
+    table_lines = []
+
+    for line in lines:
+        if "|" in line:
+            table_lines.append(line)
+        else:
+            normal_lines.append(line)
+
+    # Flatten Markdown tables by removing pipes and joining cells
+    flattened_table_text = []
+    for line in table_lines:
+        cells = [cell.strip() for cell in line.strip('|').split('|') if cell.strip()]
+        flattened_table_text.append(" ".join(cells))
+
+    # Combine normal text and table text
+    combined_text = " ".join(normal_lines) + " " + " ".join(flattened_table_text)
+
+    # Clean extra spaces
+    combined_text = re.sub(r"\s+", " ", combined_text)
+
+    return combined_text.lower().strip()
+
+def content2_similarity(clean_html_text: str, extracted_text: str) -> float:
     try:
-        t1 = clean_html(html1)
-        t2 = clean_html(html2)
-        w1 = Counter(t1.split())
-        w2 = Counter(t2.split())
+        w1 = Counter(clean_html_text.split())
+        w2 = Counter(extracted_text.split())
         common = set(w1) & set(w2)
         dot = sum(w1[w] * w2[w] for w in common)
         norm1 = sum(v*v for v in w1.values()) ** 0.5
         norm2 = sum(v*v for v in w2.values()) ** 0.5
         return dot / (norm1 * norm2) if norm1 and norm2 else 0.0
-    except Exception:
+    except:
         return 0.0
 
-def load_html_file(path: str) -> str:
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
+def main():
+    html_base = Path("/ltstorage/home/4baba/EUR_lex/htmls_2024")
+    json_base = Path("/ltstorage/home/4baba/EUR_lex/converted_json")
+    output_csv = Path("content2.csv")
 
-def load_json_text(path: str) -> str:
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    texts = []
-    for page in data.get("pages", []):
-        natural_text = page.get("natural_text", "")
+    allowed_categories = {"category10", "category19"}
+
+    if not output_csv.exists():
+        output_csv.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(columns=["Filepath", "CELEX ID", "Language", "content2"]).to_csv(output_csv, index=False)
+
+    all_html_files = list(html_base.rglob("*.html"))
+
+    html_files = [
+        f for f in all_html_files
+        if f.relative_to(html_base).parts[0] in allowed_categories
+    ]
+
+    for html_file in tqdm(html_files, desc="Evaluating", unit="file"):
+        relative_path = html_file.relative_to(html_base)
+        json_file = json_base / relative_path.with_suffix(".json")
+
+        if not json_file.exists():
+            print(f" Warning: Missing JSON for {relative_path}")
+            continue
+
+        celex_lang = html_file.stem
+        if "_" not in celex_lang:
+            print(f"Warning: Unexpected filename format: {celex_lang}")
+            continue
+
+        celex_id, lang = celex_lang.rsplit("_", 1)
+
         try:
-            parsed = json.loads(natural_text)
-            text = parsed.get("natural_text", "")
-        except (json.JSONDecodeError, TypeError):
-            text = natural_text
-        texts.append(text)
-    return "\n".join(texts)
+            with open(html_file, "r", encoding="utf-8") as f:
+                html_content = f.read()
+
+            gt_cleaned = clean_html(html_content)
+            extracted_text = extract_natural_text(json_file)
+
+            sim = content2_similarity(gt_cleaned, extracted_text)
+
+            result_row = {
+                "Filepath": str(relative_path).replace("\\", "/"),
+                "CELEX ID": celex_id,
+                "Language": lang,
+                "content2": round(sim, 4)
+            }
+
+            pd.DataFrame([result_row]).to_csv(output_csv, mode='a', header=False, index=False)
+
+        except Exception as e:
+            print(f"Error processing {relative_path}: {e}")
+
+    print(f" Finished! Results saved to '{output_csv}'.")
+
+if __name__ == "__main__":
+    main()
 
 
-html_dirs = [
-    "/ltstorage/home/4baba/EUR_lex/htmls_2024/category10",
-    "/ltstorage/home/4baba/EUR_lex/htmls_2024/category19"
-]
-json_dirs = [
-    "/ltstorage/home/4baba/EUR_lex/converted_json/category10",
-    "/ltstorage/home/4baba/EUR_lex/converted_json/category19"
-]
-output_csv = "html_json_content2.csv"
 
-# Load Existing CSV to Skip Duplicates 
-existing_entries = set()
-if os.path.exists(output_csv):
-    with open(output_csv, newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            existing_entries.add(row["Filepath"])
+# import json
+# import re
+# from pathlib import Path
+# from collections import Counter
+# from bs4 import BeautifulSoup
+# from spellchecker import SpellChecker
 
-with open(output_csv, mode='a', newline='', encoding='utf-8') as csvfile:
-    writer = csv.writer(csvfile)
-    if not existing_entries:
-        writer.writerow(["Filepath", "CELEX ID", "Language", "content2"])
+# def clean_html(html_content: str) -> str:
+#     soup = BeautifulSoup(html_content, "html.parser")
 
-    for html_base, json_base in zip(html_dirs, json_dirs):
-        for root, _, files in os.walk(html_base):
-            for file in tqdm(files, desc=f"Processing {html_base}"):
-                if not file.endswith(".html"):
-                    continue
+#     normal_text = " ".join(soup.stripped_strings)
+#     table_texts = []
 
-                html_path = os.path.join(root, file)
-                relative_path = os.path.relpath(html_path, html_base)
-                celex_id = file.split("_")[0]
-                language = file.split("_")[1].split(".")[0]
-                if relative_path in existing_entries:
-                    continue
+#     for table in soup.find_all("table"):
+#         for cell in table.find_all(["td", "th"]):
+#             cell_text = cell.get_text(separator=" ", strip=True)
+#             table_texts.append(cell_text)
 
-                json_path = os.path.join(
-                    json_base, os.path.relpath(root, html_base), file.replace(".html", ".json")
-                )
+#     combined_text = normal_text + " " + " ".join(table_texts)
+#     combined_text = re.sub(r"\s+", " ", combined_text)
+#     return combined_text.lower().strip()
 
-                if not os.path.exists(json_path):
-                    continue
+# def extract_natural_text(json_path: Path) -> str:
+#     with open(json_path, "r", encoding="utf-8") as f:
+#         data = json.load(f)
 
-                try:
-                    html_text = load_html_file(html_path)
-                    json_text = load_json_text(json_path)
-                    sim = content2_similarity(html_text, json_text)
-                    writer.writerow([relative_path, celex_id, language, f"{sim:.4f}"])
-                    csvfile.flush()
-                except Exception:
-                    continue
+#     texts = []
+#     for page in data.get("pages", []):
+#         natural_text = page.get("natural_text", "")
+#         if isinstance(natural_text, str):
+#             try:
+#                 parsed = json.loads(natural_text)
+#                 if isinstance(parsed, dict) and "natural_text" in parsed:
+#                     natural_text = parsed["natural_text"]
+#             except json.JSONDecodeError:
+#                 pass
+#         texts.append(natural_text)
+
+#     full_text = " \n ".join(texts)
+#     lines = full_text.splitlines()
+#     normal_lines = []
+#     table_lines = []
+
+#     for line in lines:
+#         if "|" in line:
+#             table_lines.append(line)
+#         else:
+#             normal_lines.append(line)
+
+#     flattened_table_text = []
+#     for line in table_lines:
+#         cells = [cell.strip() for cell in line.strip('|').split('|') if cell.strip()]
+#         flattened_table_text.append(" ".join(cells))
+
+#     combined_text = " ".join(normal_lines) + " " + " ".join(flattened_table_text)
+#     return re.sub(r"\s+", " ", combined_text).lower().strip()
+
+# def build_spellchecker_from_html(html_text: str) -> SpellChecker:
+#     words = set(html_text.split())
+#     spell = SpellChecker(language=None)  # No built-in dictionary
+#     spell.word_frequency.load_words(words)
+#     return spell
+
+# def correct_text(text: str, spell: SpellChecker) -> str:
+#     corrected_words = []
+#     for word in text.split():
+#         if word.isalpha():
+#             correction = spell.correction(word)
+#             corrected_words.append(correction if correction is not None else word)
+#         else:
+#             corrected_words.append(word)
+#     return " ".join(str(w) for w in corrected_words)
+
+# def content2_similarity(text1: str, text2: str) -> float:
+#     try:
+#         w1 = Counter(text1.split())
+#         w2 = Counter(text2.split())
+#         common = set(w1) & set(w2)
+#         dot = sum(w1[w] * w2[w] for w in common)
+#         norm1 = sum(v*v for v in w1.values()) ** 0.5
+#         norm2 = sum(v*v for v in w2.values()) ** 0.5
+#         return dot / (norm1 * norm2) if norm1 and norm2 else 0.0
+#     except:
+#         return 0.0
+
+# def main():
+#     html_path = Path("/ltstorage/home/4baba/EUR_lex/htmls_2024/category19/law32024D1606/32024D1606_ET.html")
+#     json_path = Path("/ltstorage/home/4baba/EUR_lex/converted_json/category19/law32024D1606/32024D1606_ET.json")
+
+#     print("Cleaning HTML...")
+#     html_text = clean_html(html_path.read_text(encoding="utf-8"))
+
+#     print("Building spellchecker...")
+#     spell = build_spellchecker_from_html(html_text)
+
+#     print("Extracting JSON text...")
+#     raw_json_text = extract_natural_text(json_path)
+
+#     print("Correcting JSON text...")
+#     corrected_json_text = correct_text(raw_json_text, spell)
+
+#     print("Calculating content2 similarity...")
+#     sim_score = content2_similarity(html_text, corrected_json_text)
+
+#     print(f"content2 similarity score (corrected): {round(sim_score, 4)}")
+
+# if __name__ == "__main__":
+#     main()
+
