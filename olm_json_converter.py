@@ -15,7 +15,7 @@ import fitz  # PyMuPDF
 from olmocr.data.renderpdf import render_pdf_to_base64png
 from olmocr.prompts.anchor import get_anchor_text
 
-# === Prompt builder ===
+# Prompt builder 
 def build_finetuning_prompt_with_markdown_tables(anchor_text: str):
     return (
         "You are an intelligent document parser.\n\n"
@@ -25,8 +25,7 @@ def build_finetuning_prompt_with_markdown_tables(anchor_text: str):
         "Only return content that is clearly visible in the image. Do not hallucinate.\n\n"
         + anchor_text
     )
-
-# === Process a single PDF ===
+# Process a single PDF
 def process_pdf(pdf_path, model, processor, device):
     total_pages = len(fitz.open(pdf_path))
     document_output = {
@@ -34,7 +33,8 @@ def process_pdf(pdf_path, model, processor, device):
         "pages": []
     }
 
-    for page_number in range(1, total_pages + 1):
+    # Add tqdm for pages
+    for page_number in tqdm(range(1, total_pages + 1), desc=f"📄 {os.path.basename(pdf_path)}", leave=False):
         try:
             image_base64 = render_pdf_to_base64png(pdf_path, page_number, target_longest_image_dim=1024)
             anchor_text = get_anchor_text(pdf_path, page_number, pdf_engine="pdfreport", target_length=4000)
@@ -95,7 +95,8 @@ def process_pdf(pdf_path, model, processor, device):
 
     return document_output
 
-# === Define input and output folders ===
+
+# Define input and output folders
 category_paths = {
     "category10": "/ltstorage/home/4baba/EUR_lex/pdfs_2024/category10/*/*.pdf",
     "category19": "/ltstorage/home/4baba/EUR_lex/pdfs_2024/category19/*/*.pdf",
@@ -103,7 +104,7 @@ category_paths = {
 output_folder_base = "/ltstorage/home/4baba/EUR_lex/converted_json"
 pdf_base_path = '/ltstorage/home/4baba/EUR_lex/pdfs_2024/'
 
-# === Collect all PDF jobs ===
+# Collect all PDF jobs
 pdf_jobs = []
 for category, pattern in category_paths.items():
     pdf_files = sorted(glob.glob(pattern))
@@ -127,7 +128,7 @@ for category, pattern in category_paths.items():
 
 print(f"Found {len(pdf_jobs)} PDFs to process.")
 
-# === Load model once ===
+# Load model once 
 print(" Loading model and processor...")
 # torch.cuda.set_device(4)  
 device = torch.device("cuda")
@@ -142,7 +143,7 @@ model = Qwen2VLForConditionalGeneration.from_pretrained(
 processor = AutoProcessor.from_pretrained("Qwen/Qwen2-VL-7B-Instruct")
 print(" Model loaded.")
 
-# === Batched processing ===
+# Batched processing 
 batch_size = 30
 total_batches = ceil(len(pdf_jobs) / batch_size)
 
@@ -158,7 +159,7 @@ for batch_index in range(total_batches):
         except Exception as e:
             print(f" Failed to process {pdf_file}: {e}")
 
-    # === Clean up memory between batches ===
+    # Clean up memory between batches 
     torch.cuda.empty_cache()
     gc.collect()
 
