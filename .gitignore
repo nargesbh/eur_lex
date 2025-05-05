@@ -4,3 +4,7 @@ converted_html_2024/*
 converted_json/*
 evaluation_results/*
 save_edited_htmls/*
+filtered_language_dictionaries/*
+merged_olmocr_pymupdf/*
+spell_checked_json/*
+spell_checked_json_2/*
