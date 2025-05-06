@@ -1,11 +1,10 @@
-import argparse
 from pathlib import Path
-import pandas as pd
-from bs4 import BeautifulSoup
-from collections import Counter
-import re
 from dataclasses import dataclass, field
 from typing import Dict, List
+from collections import Counter
+import pandas as pd
+from bs4 import BeautifulSoup
+import re
 from tqdm import tqdm
 
 @dataclass
@@ -22,27 +21,32 @@ class Evaluator:
     def __init__(self) -> None:
         self.results: Dict[str, List[ExtractPDFResult]] = {}
 
-    def clean_html_with_markdown(self, html: str) -> str:
-        soup = BeautifulSoup(html, "html.parser")
-        # Include markdown text if present in pre/code blocks
-        markdown_texts = []
-        for tag in soup.find_all(["pre", "code", "div"]):
-            if tag.get("class") == ["markdown"] or "markdown" in str(tag.get("class")):
-                markdown_texts.append(tag.get_text(" ", strip=True))
-        for tag in soup.find_all(True):
-            for attr in ["style", "class", "id", "width", "height"]:
-                tag.attrs.pop(attr, None)
-        cleaned = " ".join(soup.stripped_strings)
-        all_text = cleaned + " " + " ".join(markdown_texts)
-        return re.sub(r"\s+", " ", all_text).strip().lower()
+    def clean_html(self, html_content: str) -> str:
+        soup = BeautifulSoup(html_content, "html.parser")
+        full_text = soup.get_text("\n", strip=True)
+
+        lines = full_text.splitlines()
+        normal_lines, table_lines = [], []
+
+        for line in lines:
+            (table_lines if "|" in line else normal_lines).append(line)
+
+        table_flat = []
+        for line in table_lines:
+            cells = [c.strip() for c in line.strip("|").split("|") if c.strip()]
+            table_flat.append(" ".join(cells))
+
+        combined = " ".join(normal_lines + table_flat)
+        return re.sub(r"\s+", " ", combined).strip().lower()
 
     def _content2_similarity(self, html1: str, html2: str) -> float:
         try:
-            t1 = self.clean_html_with_markdown(html1)
-            t2 = self.clean_html_with_markdown(html2)
+            t1 = self.clean_html(html1)
+            t2 = self.clean_html(html2)
             w1 = Counter(t1.split())
             w2 = Counter(t2.split())
-            dot = sum(w1[w] * w2[w] for w in set(w1) & set(w2))
+            common = set(w1) & set(w2)
+            dot = sum(w1[w] * w2[w] for w in common)
             norm1 = sum(v * v for v in w1.values()) ** 0.5
             norm2 = sum(v * v for v in w2.values()) ** 0.5
             return dot / (norm1 * norm2) if norm1 and norm2 else 0.0
@@ -56,25 +60,14 @@ class Evaluator:
         return result
 
 def main():
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("merged_html_dir", type=Path, help="Directory of merged HTML files")
-    # parser.add_argument("official_html_dir", type=Path, help="Directory of ground truth HTML files")
-    # parser.add_argument("output_csv", type=Path, help="Path to save content2 scores")
-    
     merged_html_dir = Path('/ltstorage/home/4baba/EUR_lex/merged_olmocr_pymupdf')
     official_html_dir = Path('/ltstorage/home/4baba/EUR_lex/htmls_2024')
-    output_csv = Path('merged_html_json_evaluation.csv')
-
-    # args = parser.parse_args()
-    # merged_html_dir = args.merged_html_dir
-    # official_html_dir = args.official_html_dir
-    # output_csv = args.output_csv
-    # output_csv.parent.mkdir(parents=True, exist_ok=True)
+    output_csv = Path('merged2.csv')
 
     evaluator = Evaluator()
     rows = []
 
-    for merged_file in tqdm(list(merged_html_dir.rglob("*.html")), desc="Evaluating merged files"):
+    for merged_file in tqdm(list(merged_html_dir.rglob("*.html")), desc="Evaluating merged HTMLs"):
         rel_path = merged_file.relative_to(merged_html_dir)
         gt_file = official_html_dir / rel_path
 
@@ -109,8 +102,13 @@ def main():
 
     df = pd.DataFrame(rows)
     df.to_csv(output_csv, index=False)
-    print(f"Evaluation complete. Saved to {output_csv}")
-    print(df.describe().round(4))
+    print(f"✅ Evaluation complete. Saved to {output_csv}")
+
+    if not df.empty:
+        print("Average Scores:")
+        print(df.describe().round(4))
+    else:
+        print("⚠️ No files evaluated. Check your input paths.")
 
 if __name__ == "__main__":
     main()
