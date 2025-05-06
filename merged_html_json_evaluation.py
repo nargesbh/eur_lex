@@ -28,16 +28,25 @@ class Evaluator:
         lines = full_text.splitlines()
         normal_lines, table_lines = [], []
 
+        # Detect markdown tables (lines with pipes)
         for line in lines:
-            (table_lines if "|" in line else normal_lines).append(line)
+            line = line.strip()
+            if "|" in line and "---" not in line:
+                table_lines.append(line)
+            else:
+                normal_lines.append(line)
 
+        # Flatten markdown tables to plain text
         table_flat = []
         for line in table_lines:
             cells = [c.strip() for c in line.strip("|").split("|") if c.strip()]
-            table_flat.append(" ".join(cells))
+            if cells:
+                table_flat.append(" ".join(cells))
 
         combined = " ".join(normal_lines + table_flat)
-        return re.sub(r"\s+", " ", combined).strip().lower()
+        # Final cleanup
+        cleaned = re.sub(r"\s+", " ", combined).strip().lower()
+        return cleaned
 
     def _content2_similarity(self, html1: str, html2: str) -> float:
         try:
@@ -50,7 +59,8 @@ class Evaluator:
             norm1 = sum(v * v for v in w1.values()) ** 0.5
             norm2 = sum(v * v for v in w2.values()) ** 0.5
             return dot / (norm1 * norm2) if norm1 and norm2 else 0.0
-        except:
+        except Exception as e:
+            print(f"Error computing similarity: {e}")
             return 0.0
 
     def evaluate(self, result: ExtractPDFResult) -> ExtractPDFResult:
@@ -62,7 +72,7 @@ class Evaluator:
 def main():
     merged_html_dir = Path('/ltstorage/home/4baba/EUR_lex/merged_olmocr_pymupdf')
     official_html_dir = Path('/ltstorage/home/4baba/EUR_lex/htmls_2024')
-    output_csv = Path('merged2.csv')
+    output_csv = Path('merged3.csv')
 
     evaluator = Evaluator()
     rows = []
@@ -72,43 +82,46 @@ def main():
         gt_file = official_html_dir / rel_path
 
         if not gt_file.exists():
-            print(f"⚠️ Missing ground truth for: {rel_path}")
+            print(f"Missing ground truth for: {rel_path}")
             continue
 
         filename = merged_file.name
         celex_id, lang = filename.replace(".html", "").rsplit("_", 1)
 
-        with open(gt_file, encoding="utf-8") as f1, open(merged_file, encoding="utf-8") as f2:
-            gt_html = f1.read()
-            merged_html = f2.read()
+        try:
+            with open(gt_file, encoding="utf-8") as f1, open(merged_file, encoding="utf-8") as f2:
+                gt_html = f1.read()
+                merged_html = f2.read()
 
-        result = ExtractPDFResult(
-            tool_name="Merged",
-            file_name=filename,
-            celex_id=celex_id,
-            language=lang,
-            ground_truth_html=gt_html,
-            extracted_html=merged_html
-        )
+            result = ExtractPDFResult(
+                tool_name="Merged",
+                file_name=filename,
+                celex_id=celex_id,
+                language=lang,
+                ground_truth_html=gt_html,
+                extracted_html=merged_html
+            )
 
-        result = evaluator.evaluate(result)
+            result = evaluator.evaluate(result)
 
-        rows.append({
-            "Filename": filename,
-            "CELEX ID": celex_id,
-            "Language": lang,
-            "content2": result.metrics["content2"]
-        })
+            rows.append({
+                "Filename": filename,
+                "CELEX ID": celex_id,
+                "Language": lang,
+                "content2": result.metrics["content2"]
+            })
+        except Exception as e:
+            print(f"Error processing {filename}: {e}")
 
     df = pd.DataFrame(rows)
     df.to_csv(output_csv, index=False)
-    print(f"✅ Evaluation complete. Saved to {output_csv}")
+    print(f"Evaluation complete. Saved to {output_csv}")
 
     if not df.empty:
         print("Average Scores:")
         print(df.describe().round(4))
     else:
-        print("⚠️ No files evaluated. Check your input paths.")
+        print("No files evaluated. Check your input paths.")
 
 if __name__ == "__main__":
     main()
