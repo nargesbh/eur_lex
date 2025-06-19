@@ -35,5 +35,5 @@ def get_celex(pages, provided_url):
                         list_celex.append(v.text)
         except:
             pass
-
+    print(f"Total CELEX IDs extracted: {len(list_celex)}")
     return list_celex
