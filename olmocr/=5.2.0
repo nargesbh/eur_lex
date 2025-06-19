@@ -1,0 +1,5 @@
+Collecting pypdf
+  Using cached pypdf-5.5.0-py3-none-any.whl.metadata (7.2 kB)
+Downloading pypdf-5.5.0-py3-none-any.whl (303 kB)
+Installing collected packages: pypdf
+Successfully installed pypdf-5.5.0
