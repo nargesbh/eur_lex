@@ -105,23 +105,19 @@ def run_fetch(years, domains):
 
     end_time = time()
     logging.info(f"Execution completed in {end_time - start_time:.2f} seconds")
-
-def run_fetch_for_subgroup():
+    
+def run_fetch_for_subgroup(pdf_base_dir, html_base_dir):
     langs = ['BG', 'ES', 'CS', 'DA', 'DE', 'ET', 'EL', 'EN', 'FR',
              'GA', 'HR', 'IT', 'LV', 'LT', 'HU', 'MT', 'NL', 'PL',
              'PT', 'RO', 'SK', 'SL', 'FI', 'SV']
 
-    base_dir = os.getcwd()
-    category_num = 15  # This is the main group
+    category_num = 15  # Main domain
     subgroup_code = 1510
 
-    # Output base folders
-    pdf_base_dir = os.path.join(base_dir, f"pdfs_category{category_num}")
-    html_base_dir = os.path.join(base_dir, f"htmls_category{category_num}")
     os.makedirs(pdf_base_dir, exist_ok=True)
     os.makedirs(html_base_dir, exist_ok=True)
 
-    logs_path = os.path.join(base_dir, f"Logs_Category{category_num}_{subgroup_code}.log")
+    logs_path = os.path.join(os.getcwd(), f"Logs_Category{category_num}_{subgroup_code}.log")
     logging.basicConfig(filename=logs_path,
                         format='%(asctime)s %(levelname)-8s %(message)s',
                         level=logging.INFO,
@@ -131,7 +127,7 @@ def run_fetch_for_subgroup():
 
     base_url = f'https://eur-lex.europa.eu/search.html?name=browse-by%3Alegislation-in-force&type=named&displayProfile=allRelAllConsDocProfile&CC_1_CODED={category_num}&CC_2_CODED={subgroup_code}'
 
-    for year in range(1961, 2026):
+    for year in range(2025, 2026):
         print(f"Fetching category {category_num}, subgroup {subgroup_code}, year {year}")
         final_url = base_url + f"&DD_YEAR={year}"
         celex_ids = celex_main(final_url)
@@ -139,10 +135,8 @@ def run_fetch_for_subgroup():
         if not celex_ids:
             logging.info(f"No CELEX IDs found for year {year}")
             continue
-        
         print(f"[run_fetch] Found {len(celex_ids)} CELEX IDs for year {year}")
         for celex_id in tqdm(celex_ids):
-            # Directories for this CELEX ID by year
             pdf_dir = os.path.join(pdf_base_dir, f"{year}", f"law{celex_id}")
             html_dir = os.path.join(html_base_dir, f"{year}", f"law{celex_id}")
             os.makedirs(pdf_dir, exist_ok=True)
@@ -151,7 +145,6 @@ def run_fetch_for_subgroup():
             for lang in langs:
                 print(f"[run_fetch] Fetching HTML for CELEX: {celex_id}, lang: {lang}")
                 fetch_and_save_html(lang, celex_id, html_dir)
-                
                 print(f"[run_fetch] Fetching PDF for CELEX: {celex_id}, lang: {lang}")
                 fetch_and_save_pdf(lang, celex_id, pdf_dir)
                 sleep(1)
@@ -160,12 +153,14 @@ def run_fetch_for_subgroup():
     logging.info(f"Execution completed in {end_time - start_time:.2f} seconds")
 
 
-
 # if __name__ == "__main__":
 #     selected_years = [2024]  # Fetching laws for 2024
 #     selected_domains = range(10, 21)  # Domains 10 to 20
 #     run_fetch(selected_years, selected_domains)
 
 if __name__ == "__main__":
-    run_fetch_for_subgroup()
+    pdf_output = "/ltstorage/home/4baba/EUR_lex/category15/pdfs_category15"
+    html_output = "/ltstorage/home/4baba/EUR_lex/category15/htmls_category15"
+    run_fetch_for_subgroup(pdf_output, html_output)
+
 
