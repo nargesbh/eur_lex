@@ -2,27 +2,23 @@ import os
 import json
 from pathlib import Path
 
-# Input and output directories
-source_dir = Path("/ltstorage/home/4baba/EUR_lex/all_jsonl_files")
-#/ltstorage/home/4baba/EUR_lex/eur-lex-sum/Scraping/localworkspace/results
-
-output_base = Path("/ltstorage/shares/datasets/eu/category15/json_all")
+# Input/output directories
+source_dir = Path("/ltstorage/shares/datasets/eu/category15/localworkspace_leftovers/results")
+output_base = Path("/ltstorage/shares/datasets/eu/category15/json_category15")
 
 def get_output_path(source_file):
     try:
         parts = Path(source_file).parts
-        idx = parts.index("pdfs_category15")
-        relative_path = Path(*parts[idx + 1:])  # Skip "pdfs_category15"
-        return output_base / relative_path.with_suffix(".jsonl")
-    except ValueError:
-        print(f" Could not find 'pdfs_category15' in path: {source_file}")
+        # Extract the last 3 parts: year, CELEX dir, filename
+        relative_parts = parts[-3:]
+        return output_base / Path(*relative_parts).with_suffix(".jsonl")
     except Exception as e:
-        print(f" Error processing path: {source_file} — {e}")
-    return None
+        print(f"Error processing path: {source_file} — {e}")
+        return None
 
 # Process all .jsonl files
 for file in source_dir.glob("*.jsonl"):
-    print(f" Reading: {file}")
+    print(f"Reading: {file}")
     with open(file, "r", encoding="utf-8") as f:
         for line_num, line in enumerate(f, start=1):
             line = line.strip()
@@ -30,14 +26,14 @@ for file in source_dir.glob("*.jsonl"):
                 continue
             try:
                 data = json.loads(line)
-                source_file = data.get("metadata", {}).get("Source-File", None)
+                source_file = data.get("metadata", {}).get("Source-File")
                 if not source_file:
                     print(f"No Source-File found at line {line_num} in {file.name}")
                     continue
 
                 output_path = get_output_path(source_file)
                 if output_path is None:
-                    print(f"⏭ Skipped line {line_num} in {file.name}")
+                    print(f"Skipped line {line_num} in {file.name}")
                     continue
 
                 if output_path.exists():
