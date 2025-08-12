@@ -214,16 +214,53 @@ class UnstructuredTool:
         return "\n".join(html_parts)
 
 
+class CamelotTablesTool:
+    name = "camelot_tables"
+
+    def convert(self, pdf_path: str) -> str:
+        import camelot
+        from pathlib import Path
+        import fitz
+
+        pdf_file = Path(pdf_path)
+        doc = fitz.open(str(pdf_file))
+        num_pages = doc.page_count
+        doc.close()
+
+        html_parts = ["<html><body>"]
+        extracted_any = False
+
+        for page_number in range(1, num_pages + 1):
+            try:
+                tables = camelot.read_pdf(str(pdf_file), pages=str(page_number), flavor="stream")
+                if tables:
+                    html_parts.append(f"<h2>Page {page_number} - {len(tables)} Table(s)</h2>")
+                    for idx, table in enumerate(tables, start=1):
+                        html_parts.append(f"<h3>Table {idx}</h3>")
+                        html_parts.append(table.df.to_html(index=False, border=1))
+                    extracted_any = True
+            except Exception as e:
+                html_parts.append(f"<p>Failed to extract tables from page {page_number}: {e}</p>")
+
+        if not extracted_any:
+            html_parts.append("<p>No tables extracted due to errors or no tables found.</p>")
+
+        html_parts.append("</body></html>")
+        return "\n".join(html_parts)
+
+
 # ---------------------------
 # Tool Registry
 # ---------------------------
+
 TOOL_REGISTRY = {
     "docling": DoclingTool(),
     "pymupdf": PyMuPDFTool(),
     "pymupdf_tables": PyMuPDFWithTablesTool(),
     "hybrid": PdfPlumberHybridTool(),
-    "pymupdf_hybrid": PyMuPDFHybridOrderedTool(),
-    "unstructured": UnstructuredTool()
+    "hybrid_ordered": PyMuPDFHybridOrderedTool(),
+    "unstructured": UnstructuredTool(),  # page numbers only
+    "camelot_tables": CamelotTablesTool()  
 }
 
 
