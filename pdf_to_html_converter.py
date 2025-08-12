@@ -1,24 +1,29 @@
 import os
 import re
 import logging
-from tqdm import tqdm
-import fitz  # PyMuPDF
-import pandas as pd
-import pdfplumber
+import time
+import argparse
+import csv
+from pathlib import Path
 from typing import List
+from collections import defaultdict
+
+import fitz  # PyMuPDF
+import pdfplumber
+import pandas as pd
+from tqdm import tqdm
 from unstructured.documents.elements import Element
 from unstructured.partition.pdf import partition_pdf
 from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import EasyOcrOptions, PdfPipelineOptions, TableFormerMode
 from docling.document_converter import DocumentConverter, PdfFormatOption
-import html
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 
 # ---------------------------
-# Tool: Docling
-# Full document extraction using OCR and structure-aware parser
+# Docling Tool
 # ---------------------------
 class DoclingTool:
     def __init__(self):
@@ -40,148 +45,132 @@ class DoclingTool:
         try:
             result = self.doc_converter.convert(pdf_file)
             document = result.document
-            html = document.export_to_html()
-            if not html.strip():
+            html_out = document.export_to_html()
+            if not html_out.strip():
                 logging.warning(f"[Docling] {os.path.basename(pdf_file)} is empty")
-            return html
+            return html_out
         except Exception as e:
             logging.error(f"[Docling] Error: {e}")
             return ""
 
 
 # ---------------------------
-# Tool: PyMuPDF (text only)
-# Extracts plain text using HTML layout from PyMuPDF
-# No table detection included
+# PyMuPDF Tool (basic HTML)
 # ---------------------------
 class PyMuPDFTool:
     def convert(self, pdf_file: str) -> str:
         try:
             doc = fitz.open(pdf_file)
-            html = "<html><body>\n"
+            html_out = "<html><body>\n"
             for i, page in enumerate(doc):
-                html += f"<h2>Page {i + 1}</h2>\n"
-                html += page.get_text("html") + "\n"
-            html += "</body></html>"
-            return html
+                html_out += f"<h2>Page {i + 1}</h2>\n"
+                html_out += page.get_text("html") + "\n"
+            html_out += "</body></html>"
+            return html_out
         except Exception as e:
             logging.error(f"[PyMuPDF] Error: {e}")
             return ""
 
 
 # ---------------------------
-# Tool: PyMuPDF with tables
-# Same as PyMuPDFTool but includes structured tables at the end of each page
-# Extracts tables using PyMuPDF's find_tables and converts them with pandas
+# PyMuPDF with Tables
 # ---------------------------
 class PyMuPDFWithTablesTool:
     def convert(self, pdf_file: str) -> str:
         try:
             doc = fitz.open(pdf_file)
-            html = "<html><body>\n"
+            html_out = "<html><body>\n"
             for i, page in enumerate(doc):
-                html += f"<h2>Page {i + 1}</h2>\n"
-                html += page.get_text("html") + "\n"
+                html_out += f"<h2>Page {i + 1}</h2>\n"
+                html_out += page.get_text("html") + "\n"
                 try:
                     tables = page.find_tables(strategy="text")
                     for j, table in enumerate(tables):
                         df = pd.DataFrame(table.extract())
-                        html += f"<h3>Structured Table {j + 1}</h3>\n"
-                        html += df.to_html(index=False, border=1) + "\n"
+                        html_out += f"<h3>Structured Table {j + 1}</h3>\n"
+                        html_out += df.to_html(index=False, border=1) + "\n"
                 except Exception as e:
                     logging.warning(f"[PyMuPDFTables] Table error on page {i + 1}: {e}")
-            html += "</body></html>"
-            return html
+            html_out += "</body></html>"
+            return html_out
         except Exception as e:
             logging.error(f"[PyMuPDFTables] Error: {e}")
             return ""
 
 
 # ---------------------------
-# Tool: Hybrid pdfplumber + fitz
-# Uses pdfplumber for precise text layout extraction
-# Uses PyMuPDF for reliable table detection and rendering
-# Best of both: fine text + structured tables
+# PdfPlumber + PyMuPDF Hybrid
 # ---------------------------
 class PdfPlumberHybridTool:
     def convert(self, pdf_file: str) -> str:
         try:
-            html = "<html><body>\n"
+            html_out = "<html><body>\n"
             with pdfplumber.open(pdf_file) as plumber_pdf, fitz.open(pdf_file) as pymupdf_pdf:
                 for i, (plumber_page, pymupdf_page) in enumerate(zip(plumber_pdf.pages, pymupdf_pdf), start=1):
-                    html += f"<h2>Page {i}</h2>\n"
+                    html_out += f"<h2>Page {i}</h2>\n"
                     text = plumber_page.extract_text()
-                    html += f"<div style='white-space: pre-wrap;'>{text}</div>\n" if text else "<div><i>No text found.</i></div>\n"
+                    html_out += f"<div style='white-space: pre-wrap;'>{text}</div>\n" if text else "<div><i>No text found.</i></div>\n"
                     try:
                         tables = pymupdf_page.find_tables(strategy="text")
                         for j, table in enumerate(tables):
                             df = pd.DataFrame(table.extract())
-                            html += f"<h3>Table {j + 1}</h3>\n" + df.to_html(index=False, border=1)
+                            html_out += f"<h3>Table {j + 1}</h3>\n" + df.to_html(index=False, border=1)
                     except Exception as e:
                         logging.warning(f"[Hybrid] Table error on page {i}: {e}")
-            html += "</body></html>"
-            return html
+            html_out += "</body></html>"
+            return html_out
         except Exception as e:
-            logging.error(f"[Hybrid] Error: {e}")
+            logging.error(f"[Hybrid] Failed to convert {pdf_file}: {e}")
             return ""
 
+
+# ---------------------------
+# PyMuPDF Hybrid Ordered
+# ---------------------------
 class PyMuPDFHybridOrderedTool:
     def convert(self, pdf_file: str) -> str:
         try:
             doc = fitz.open(pdf_file)
             html_out = "<html><body>\n"
-
             for i, page in enumerate(doc):
                 html_out += f"<h2>Page {i + 1}</h2>\n"
                 elements = []
-
-                # --- Extract Text Blocks ---
                 blocks = page.get_text("dict")["blocks"]
                 for block in blocks:
-                    if block["type"] == 0:  # Text block
+                    if block["type"] == 0:
                         y0 = block["bbox"][1]
                         paragraph = ""
                         for line in block["lines"]:
                             line_text = " ".join([span["text"] for span in line["spans"]])
                             paragraph += line_text.strip() + " "
                         if paragraph.strip():
-                            paragraph_html = f"<p>{html.escape(paragraph.strip())}</p>"
-                            elements.append((y0, paragraph_html))
-
-                # --- Extract All Tables (No Filtering) ---
+                            elements.append((y0, f"<p>{paragraph.strip()}</p>"))
                 try:
                     tables = page.find_tables(strategy="text")
                     for j, table in enumerate(tables):
                         y0 = table.bbox[1]
                         df = pd.DataFrame(table.extract())
-                        table_html = f"<h3>Table {j + 1}</h3>\n" + df.to_html(index=False, border=1)
-                        elements.append((y0, table_html))
+                        elements.append((y0, f"<h3>Table {j + 1}</h3>\n" + df.to_html(index=False, border=1)))
                 except Exception as e:
                     logging.warning(f"[PyMuPDFHybridOrdered] Table error on page {i + 1}: {e}")
-
-                # --- Merge Text + Tables by Layout Order ---
-                elements.sort(key=lambda x: x[0])  # Sort by vertical position
+                elements.sort(key=lambda x: x[0])
                 for _, content in elements:
                     html_out += content + "\n"
-
             html_out += "</body></html>"
             return html_out
-
         except Exception as e:
             logging.error(f"[PyMuPDFHybridOrdered] Error: {e}")
             return ""
 
 
 # ---------------------------
-# Tool: Unstructured
-# Extracts elements and structures them semantically into HTML
-# Includes basic layout classification (headings, paragraphs, etc.)
+# Unstructured Tool (page number version only)
 # ---------------------------
 class UnstructuredTool:
     def __init__(self, language="eng"):
         self.language = language
 
-    def extract_elements(self, pdf_file: str) -> List[Element]:
+    def extract_elements(self, pdf_file: str):
         try:
             return partition_pdf(
                 filename=pdf_file,
@@ -191,22 +180,8 @@ class UnstructuredTool:
                 languages=[self.language],
             )
         except Exception as e:
-            logging.error(f"[Unstructured] Error: {e}")
+            logging.error(f"[Unstructured] Failed to extract elements from {pdf_file}: {e}")
             return []
-
-    def convert(self, pdf_file: str) -> str:
-        elements = self.extract_elements(pdf_file)
-        html_parts = []
-        for el in elements:
-            try:
-                if hasattr(el.metadata, "text_as_html") and el.metadata.text_as_html:
-                    html_parts.append(el.metadata.text_as_html)
-                else:
-                    tag = self._tag_for_element(el)
-                    html_parts.append(f"<{tag}>{el.text.strip()}</{tag}>")
-            except Exception as e:
-                logging.warning(f"[Unstructured] Element error: {e}")
-        return "<html><body>\n" + "\n<br/>".join(html_parts) + "\n</body></html>"
 
     def _tag_for_element(self, el: Element) -> str:
         cat = el.category.lower()
@@ -217,84 +192,96 @@ class UnstructuredTool:
             "page": "hr", "break": "hr"
         }.get(cat, "p")
 
-# ---------------------------
-# Language extraction for Unstructured
-# ---------------------------
-def extract_tesseract_lang_from_filename(filename: str) -> str:
-    code_map = {
-        "BG": "bul", "CS": "ces", "DA": "dan", "DE": "deu", "EL": "ell", "EN": "eng",
-        "ES": "spa", "ET": "est", "FI": "fin", "FR": "fra", "GA": "gle", "HR": "hrv",
-        "HU": "hun", "IT": "ita", "LT": "lit", "LV": "lav", "MT": "mlt", "NL": "nld",
-        "PL": "pol", "PT": "por", "RO": "ron", "SK": "slk", "SL": "slv", "SV": "swe",
-    }
-    match = re.search(r"_([A-Z]{2})\\.pdf$", os.path.basename(filename))
-    return code_map.get(match.group(1), "eng") if match else "eng"
+    def convert(self, pdf_file: str) -> str:
+        elements = self.extract_elements(pdf_file)
+        pages = defaultdict(list)
+        for el in elements:
+            page_num = getattr(el.metadata, "page_number", 1)
+            pages[page_num].append(el)
+        html_parts = ["<html><body>"]
+        for page_num in sorted(pages.keys()):
+            html_parts.append(f"<h2>Page {page_num}</h2>")
+            for el in pages[page_num]:
+                try:
+                    if hasattr(el.metadata, "text_as_html") and el.metadata.text_as_html:
+                        html_parts.append(el.metadata.text_as_html)
+                    else:
+                        tag = self._tag_for_element(el)
+                        html_parts.append(f"<{tag}>{el.text.strip()}</{tag}>")
+                except Exception as e:
+                    logging.warning(f"[Unstructured] Error in element conversion: {e}")
+        html_parts.append("</body></html>")
+        return "\n".join(html_parts)
+
 
 # ---------------------------
-# Tool registry
+# Tool Registry
 # ---------------------------
 TOOL_REGISTRY = {
     "docling": DoclingTool(),
     "pymupdf": PyMuPDFTool(),
     "pymupdf_tables": PyMuPDFWithTablesTool(),
-    "pdfplumber_mix": PdfPlumberHybridTool(),
+    "hybrid": PdfPlumberHybridTool(),
     "pymupdf_hybrid": PyMuPDFHybridOrderedTool(),
+    "unstructured": UnstructuredTool()
 }
 
+
 # ---------------------------
-# Main converter wrapper
+# Conversion Logic
 # ---------------------------
-def convert_pdf_to_html(pdf_path: str, tool_name: str, output_path: str):
-    if tool_name == "unstructured":
-        lang = extract_tesseract_lang_from_filename(pdf_path)
-        tool = UnstructuredTool(language=lang)
+def convert_single_pdf(pdf_file: Path, output_dir: Path, tool_name: str, timing_writer=None, skip_existing=False):
+    tool = TOOL_REGISTRY[tool_name]
+    rel_path = pdf_file.with_suffix(".html").name
+    output_path = output_dir / tool_name / rel_path
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if skip_existing and output_path.exists():
+        logging.info(f"[{tool_name}] Skipping existing: {output_path}")
+        return
+    logging.info(f"[{tool_name}] Processing: {pdf_file}")
+    start_time = time.time()
+    html_content = tool.convert(str(pdf_file))
+    duration = time.time() - start_time
+    if html_content.strip():
+        output_path.write_text(html_content, encoding="utf-8")
+        if timing_writer:
+            timing_writer.writerow({"Filepath": str(pdf_file), "method": tool_name, "time": duration})
+        logging.info(f"[{tool_name}] Saved: {output_path}")
     else:
-        tool = TOOL_REGISTRY.get(tool_name)
+        logging.warning(f"[{tool_name}] Empty output for {pdf_file}")
 
-    if not tool:
-        raise ValueError(f"Unsupported tool: {tool_name}")
 
-    html_content = tool.convert(pdf_path)
-    if html_content:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(html_content)
-        logging.info(f"Saved: {output_path}")
-    else:
-        logging.warning(f"No output: {pdf_path}")
+def main():
+    parser = argparse.ArgumentParser(description="PDF to HTML conversion using multiple tools")
+    parser.add_argument("--input", required=True, help="Path to PDF file or directory")
+    parser.add_argument("--output", required=True, help="Output root directory")
+    parser.add_argument("--tools", nargs="+", required=True, choices=list(TOOL_REGISTRY.keys()), help="Tools to run")
+    parser.add_argument("--timing-csv", help="Path to timing CSV file")
+    parser.add_argument("--skip-existing", action="store_true", help="Skip already processed files")
+    args = parser.parse_args()
 
-# ---------------------------
-# Batch runner
-# ---------------------------
-from tqdm import tqdm
+    input_path = Path(args.input)
+    output_root = Path(args.output)
+    pdf_files = [input_path] if input_path.is_file() else list(input_path.rglob("*.pdf"))
 
-from tqdm import tqdm
+    timing_writer = None
+    csv_file = None
+    if args.timing_csv:
+        timing_csv_path = Path(args.timing_csv)
+        timing_csv_path.parent.mkdir(parents=True, exist_ok=True)
+        csv_exists = timing_csv_path.exists()
+        csv_file = open(timing_csv_path, mode="a", newline="", encoding="utf-8")
+        timing_writer = csv.DictWriter(csv_file, fieldnames=["Filepath", "method", "time"])
+        if not csv_exists:
+            timing_writer.writeheader()
 
-def run_batch_for_tool(pdf_dirs: List[str], output_root: str, tool: str):
-    logging.info(f"Starting batch conversion with: {tool}\n")
+    for pdf_file in tqdm(pdf_files, desc="Processing PDFs", unit="file"):
+        for tool_name in args.tools:
+            convert_single_pdf(pdf_file, output_root, tool_name, timing_writer, args.skip_existing)
 
-    all_pdfs = []
-    for pdf_root in pdf_dirs:
-        for root, _, files in os.walk(pdf_root):
-            for file in files:
-                if file.endswith(".pdf"):
-                    pdf_path = os.path.join(root, file)
-                    # Include category10/category11 in rel_path
-                    rel_path = os.path.relpath(pdf_path, start=os.path.commonprefix(pdf_dirs))
-                    all_pdfs.append((pdf_path, rel_path))
-
-    for pdf_path, rel_path in tqdm(all_pdfs, desc=f"Converting with {tool}"):
-        output_path = os.path.join(output_root, tool, os.path.splitext(rel_path)[0] + ".html")
-        convert_pdf_to_html(pdf_path, tool, output_path)
+    if csv_file:
+        csv_file.close()
 
 
 if __name__ == "__main__":
-    PDF_DIRS = [
-        "/home/4baba/EUR_lex/pdfs_2024/category10",
-        "/home/4baba/EUR_lex/pdfs_2024/category19",
-    ]
-    OUTPUT_ROOT = "/home/4baba/EUR_lex/converted_html_2024"
-    SELECTED_TOOL = "pymupdf_hybrid"
-
-    run_batch_for_tool(PDF_DIRS, OUTPUT_ROOT, SELECTED_TOOL)
-
+    main()
