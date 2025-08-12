@@ -99,110 +99,80 @@ class Evaluator:
         except:
             return 0.0
 
-    def evaluate_tool(self, result: ExtractPDFResult, weights: Dict[str, float]) -> ExtractPDFResult:
-        missed = not bool(result.extracted_html)
-        methods = {
-            "sequence": self._sequence_similarity,
-            "jaccard": self._jaccard_similarity,
-            "levenshtein": self._levenshtein_similarity,
-            "structure": self._structure_similarity,
-            "content": self._content_similarity,
-            "content2": self._content2_similarity,
-            "f1": self._f1_similarity,
-        }
-
-        result.metrics = {
-            key: (methods[key](result.ground_truth_html, result.extracted_html) if not missed else 0.0)
-            for key in weights
-        }
-        result.metrics["missed"] = 1.0 if missed else 0.0
-        result.metrics["similarity"] = sum(result.metrics[k] * weights[k] for k in weights) / len(weights)
-        self.results.setdefault(result.tool_name, []).append(result)
-        return result
-
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate PDF HTML conversions.")
-    parser.add_argument("converted_dir", type=Path, help="Base directory of converted HTML files")
-    parser.add_argument("official_dir", type=Path, help="Base directory of ground-truth official HTML files")
+    parser = argparse.ArgumentParser(description="Evaluate PDF HTML conversions with multiple metrics.")
+    parser.add_argument("converted_dir", type=Path, help="Directory of converted HTML files")
+    parser.add_argument("official_dir", type=Path, help="Directory of ground-truth HTML files")
     parser.add_argument("output_path", type=Path, help="CSV output file path")
-
     args = parser.parse_args()
 
     tool_name = args.converted_dir.name.capitalize()
-    weights = {
-        "sequence": 1.0,
-        "jaccard": 1.0,
-        "levenshtein": 1.0,
-        "structure": 1.0,
-        "content": 1.0,
-        "content2": 1.0,
-        "f1": 1.0,
-    }
-
-    categories = ["category10", "category19"]
-    base_converted_dir = args.converted_dir
-    # base_official_dir = Path("/home/4baba/EUR_lex/htmls_2024")
-    base_official_dir = args.official_dir
-
-
     evaluator = Evaluator()
     args.output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Create CSV and write header if it doesn't exist
-    header_written = args.output_path.exists()
-    if not header_written:
-        pd.DataFrame(columns=[
-            "Filename", "CELEX ID", "Language", "sequence", "jaccard", "levenshtein",
-            "structure", "content", "content2", "f1", "missed", "similarity"
-        ]).to_csv(args.output_path, index=False)
+    metric_keys = ["sequence", "jaccard", "levenshtein", "structure", "content", "content2", "f1"]
+
+    if args.output_path.exists():
+        existing_df = pd.read_csv(args.output_path)
+        already_done = set(str(Path(fp).with_suffix("")) for fp in existing_df["Filepath"])
+    else:
+        pd.DataFrame(columns=["Filepath", "CELEX ID", "Language"] + metric_keys).to_csv(args.output_path, index=False)
+        already_done = set()
+
+    converted_files = {str(f.relative_to(args.converted_dir)): f for f in args.converted_dir.rglob("*.html")}
+    official_files = {str(f.relative_to(args.official_dir)): f for f in args.official_dir.rglob("*.html")}
+    common_files = sorted(set(converted_files) & set(official_files))
+    print(f"Matched files: {len(common_files)}")
 
     all_rows = []
 
-    for category in categories:
-        converted_dir = base_converted_dir / category
-        official_dir = base_official_dir / category
+    for filename in tqdm(common_files, desc="Evaluating files", unit="file"):
+        base_path = str(Path(filename).with_suffix(""))
 
-        converted_files = {f.name: f for f in converted_dir.rglob("*.html")}
-        official_files = {f.name: f for f in official_dir.rglob("*.html")}
-        common_files = sorted(set(converted_files) & set(official_files))
+        if base_path in already_done:
+            continue
 
-        print(f"[{category}] Matching files: {len(common_files)}")
+        celex_id, lang = Path(filename).stem.rsplit("_", 1)
+        jsonl_path = f"{base_path}.jsonl"
 
-        for filename in tqdm(common_files, desc=f"Evaluating {category}", unit="file"):
-            celex_id, lang = filename.replace(".html", "").rsplit("_", 1)
-            with open(official_files[filename], "r", encoding="utf-8") as f:
-                gt = f.read()
-            with open(converted_files[filename], "r", encoding="utf-8") as f:
-                pred = f.read()
+        with open(official_files[filename], "r", encoding="utf-8") as f:
+            gt = f.read()
+        with open(converted_files[filename], "r", encoding="utf-8") as f:
+            pred = f.read()
 
-            result = ExtractPDFResult(
-                tool_name=tool_name,
-                file_name=filename,
-                language=lang,
-                celex_id=celex_id,
-                ground_truth_html=gt,
-                extracted_html=pred,
-            )
+        result = ExtractPDFResult(
+            tool_name=tool_name,
+            file_name=filename,
+            language=lang,
+            celex_id=celex_id,
+            ground_truth_html=gt,
+            extracted_html=pred,
+        )
 
-            result = evaluator.evaluate_tool(result, weights)
+        for metric in metric_keys:
+            func = getattr(evaluator, f"_{metric}_similarity")
+            result.metrics[metric] = func(gt, pred) if pred.strip() else 0.0
 
-            row = {
-                "Filename": filename,
-                "CELEX ID": celex_id,
-                "Language": lang,
-                **{k: round(v, 4) for k, v in result.metrics.items()}
-            }
+        row = {
+            "Filepath": jsonl_path,
+            "CELEX ID": celex_id,
+            "Language": lang,
+            **{k: round(result.metrics[k], 4) for k in metric_keys}
+        }
 
-            # Append result row immediately to CSV
-            pd.DataFrame([row]).to_csv(args.output_path, mode='a', header=False, index=False)
-
-            all_rows.append(row)
+        pd.DataFrame([row]).to_csv(args.output_path, mode='a', header=False, index=False)
+        all_rows.append(row)
 
     df = pd.DataFrame(all_rows)
     print(f"Evaluation results saved to: {args.output_path}")
-
-    print("Average Scores:")
-    print(df.drop(columns=["Filename", "CELEX ID", "Language"]).mean().round(4))
+    if not df.empty:
+        for metric in metric_keys:
+            print(f"Average {metric} score:", df[metric].mean().round(4))
+    else:
+        print("No new files were evaluated.")
 
 if __name__ == "__main__":
     main()
+
+
+# python conversion_evaluation.py /ltstorage/shares/datasets/eu/category15/html_pymupdf_category15 /ltstorage/shares/datasets/eu/category15/htmls_category15 /ltstorage/shares/datasets/eu/category15/evaluation/pymupdf_all_metrics.csv
