@@ -1,0 +1,4 @@
+.idea/
+*__pycache__
+Scraped_Data_Information/
+eur-lex-sum/
