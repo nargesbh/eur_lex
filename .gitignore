@@ -13,3 +13,6 @@ eur-lex-sum/pdfs_category15/*
 all_jsonl_files/*
 olmocr-pipeline-debug.log
 eur-lex-sum/Scraping/localworkspace/*
+/ltstorage/home/4baba/EUR_lex/embedding_model/problematic_docs.csv
+/ltstorage/home/4baba/EUR_lex/embedding_model/embedding_log.csv
+/ltstorage/home/4baba/EUR_lex/embedding_model/chroma_db_category15/*
