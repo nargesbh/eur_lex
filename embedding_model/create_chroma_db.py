@@ -11,31 +11,36 @@ from sentence_transformers import SentenceTransformer
 ROOT_DIR    = "/ltstorage/shares/datasets/eu/category15/txt_of_json"
 
 # Base model setup
-BASE_MODEL_ID   = "Qwen/Qwen3-Embedding-0.6B"  
-BASE_COLLECTION = "eu_cat15_txt"
+BASE_MODEL_ID   = ""  
+COLLECTION = ""
+DB_PATH = ""
 
 # Fine-tuned model setup
-FINETUNE_MODEL_PATH = "/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/english_datasets_0.6b/qwen3_0.6b_lora"
-FINETUNE_DB_PATH    = "./chromadb_english_lora_0.6b"
-FINETUNE_COLLECTION = "eu_cat15_txt_lora"
+FINETUNE_MODEL_PATH = "/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/EN_Linq-Embed-Mistral/output_mnr/best_model"
+FINETUNE_DB_PATH    = "/ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/fine_tunned/EN_Linq-Embed-Mistral_mnr"
+FINETUNE_COLLECTION = "EN_cat15"
+
+
+USE_FINE_TUNED_MODEL = True 
 
 # Shared parameters
 TOKEN_LIMIT = 30_000
 CAPS_TRY    = [30_000, 20_000, 16_000, 12_000, 8_000, 4_096, 2_048, 1_024]
 DEVICE      = "cuda"
-USE_FINE_TUNED_MODEL = False  # ← we’re running base models here
+
 
 # Logs — stored inside the ChromaDB folder
 if USE_FINE_TUNED_MODEL:
     DB_PATH = FINETUNE_DB_PATH
-    LOG_CSV    = os.path.join(DB_PATH, "EN_LORA_embedding_log.csv")
-    FAILED_CSV = os.path.join(DB_PATH, "EN_LORA_problematic_docs.csv")
+    LOG_CSV    = os.path.join(DB_PATH, "EN_embedding_log.csv")
+    FAILED_CSV = os.path.join(DB_PATH, "EN_problematic_docs.csv")
 else:
+    print(1)
     # If model is given via command-line, use that to name the folder
     model_short = sys.argv[1].split("/")[-1] if len(sys.argv) > 1 else "Qwen3-0.6B"
-    DB_PATH = f"./EN_{model_short}"  # folder for ChromaDB
-    LOG_CSV    = os.path.join(DB_PATH, f"EN_{model_short}_embedding_log.csv")
-    FAILED_CSV = os.path.join(DB_PATH, f"EN_{model_short}_problematic_docs.csv")
+    # DB_PATH = f"./EN_{model_short}"  # folder for ChromaDB
+    LOG_CSV    = os.path.join(DB_PATH, f"{model_short}_embedding_log.csv")
+    FAILED_CSV = os.path.join(DB_PATH, f"{model_short}_problematic_docs.csv")
 
 
 def maybe_free_cuda():
@@ -81,17 +86,7 @@ def main():
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
-    # --- Read model name dynamically from command-line ---
-    if len(sys.argv) > 1:
-        BASE_MODEL_ID = sys.argv[1]
-    else:
-        BASE_MODEL_ID = "Qwen/Qwen3-Embedding-0.6B"
-    print(f"Using base model: {BASE_MODEL_ID}")
 
-    # Create DB path dynamically: e.g. EN_Qwen3-Embedding-1.7B
-    model_short = BASE_MODEL_ID.split("/")[-1]
-    DB_PATH = f"./EN_{model_short}"
-    COLLECTION = f"eu_cat15_txt_{model_short}"
 
     # --- Model setup ---
     if USE_FINE_TUNED_MODEL:
@@ -100,7 +95,17 @@ def main():
         tokenizer = model.tokenizer
         client = chromadb.PersistentClient(path=FINETUNE_DB_PATH)
         coll = client.get_or_create_collection(name=FINETUNE_COLLECTION, metadata={"hnsw:space": "cosine"})
-    else:
+    else: 
+        # --- Read model name dynamically from command-line ---
+        if len(sys.argv) > 1:
+            BASE_MODEL_ID = sys.argv[1]
+        # else:
+        #     BASE_MODEL_ID = "Qwen/Qwen3-Embedding-0.6B"
+        print(f"Using base model: {BASE_MODEL_ID}")
+
+        # Create DB path dynamically: e.g. EN_Qwen3-Embedding-1.7B
+        model_short = BASE_MODEL_ID.split("/")[-1]
+        # DB_PATH = f"./EN_{model_short}"
         print(f"Loading base model: {BASE_MODEL_ID}")
         tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_ID)
         client = chromadb.PersistentClient(path=DB_PATH)
@@ -112,6 +117,7 @@ def main():
     ensure_csv(LOG_CSV, ["path", "id", "original_tokens", "used_tokens_saved"])
     ensure_csv(FAILED_CSV, ["path", "id", "original_tokens", "last_error"])
 
+    #if you are experimenting only with english files
     files = list(iter_txt_files(ROOT_DIR))
     if not files:
         print(f"No .txt files under {ROOT_DIR}")
@@ -120,7 +126,7 @@ def main():
     print(f"Found {len(files)} files. Backoff caps: {CAPS_TRY}")
 
     total = 0
-    with tqdm(total=len(files), desc=f"Indexing ({'LoRA' if USE_FINE_TUNED_MODEL else 'Base'})", unit="file") as pbar:
+    with tqdm(total=len(files), desc=f"Indexing ({'' if USE_FINE_TUNED_MODEL else 'Base'})", unit="file") as pbar:
         for fp in files:
             text = read_text(fp)
             if not text.strip():
@@ -183,7 +189,7 @@ def main():
             maybe_free_cuda()
             pbar.update(1)
 
-    print(f"Done. Indexed {total} documents into '{COLLECTION}' at {DB_PATH}")
+    # print(f"Done. Indexed {total} documents into '{COLLECTION}' at {DB_PATH}")
     print(f"Success log → {LOG_CSV}")
     print(f"Failures log → {FAILED_CSV}")
 
