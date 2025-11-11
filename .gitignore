@@ -20,3 +20,4 @@ embedding_model/chroma_DBs/*
 embedding_model/test_chromadb/test_results/*
 embedding_model/test.ipynb
 embedding_model/fine_utning/data/*
+embedding_model/fine_utning/tunning_data/*
