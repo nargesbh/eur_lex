@@ -19,5 +19,4 @@ eur-lex-sum/Scraping/localworkspace/*
 embedding_model/chroma_DBs/* 
 embedding_model/test_chromadb/test_results/*
 embedding_model/test.ipynb
-embedding_model/fine_utning/all_languages_4b/*
-embedding_model/fine_utning/english_datasets_0.6b/*
+embedding_model/fine_utning/data/*
