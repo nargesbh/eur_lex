@@ -5,8 +5,8 @@ from tqdm import tqdm
 
 # === CONFIG ===
 MANIFEST_FILE = "/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/total_split_manifest.json"
-PAIRS_FILE    = "/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/pairs.json"
-OUTPUT_DIR    = Path("/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/split_pairs")
+PAIRS_FILE    = "/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/EN_SFR-Embedding-Mistral/pairs.jsonl"
+OUTPUT_DIR    = Path("/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/EN_SFR-Embedding-Mistral")
 # ===============
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
