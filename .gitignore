@@ -21,3 +21,6 @@ embedding_model/test_chromadb/test_results/*
 embedding_model/test.ipynb
 embedding_model/fine_utning/data/*
 embedding_model/fine_utning/tunning_data/*
+/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/*
+/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/*
+/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchAll/*
