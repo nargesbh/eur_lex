@@ -16,8 +16,8 @@ COLLECTION = ""
 DB_PATH = ""
 
 # Fine-tuned model setup
-FINETUNE_MODEL_PATH = "/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/EN_Linq-Embed-Mistral/output_mnr/best_model"
-FINETUNE_DB_PATH    = "/ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/fine_tunned/EN_Linq-Embed-Mistral_mnr"
+FINETUNE_MODEL_PATH = "/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/EN_Qwen3-Embedding-4B/output_mnr/best_model"
+FINETUNE_DB_PATH    = "/ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/fine_tunned/EN_Qwen3-Embedding-4B_mnr/"
 FINETUNE_COLLECTION = "EN_cat15"
 
 
@@ -103,9 +103,7 @@ def main():
         #     BASE_MODEL_ID = "Qwen/Qwen3-Embedding-0.6B"
         print(f"Using base model: {BASE_MODEL_ID}")
 
-        # Create DB path dynamically: e.g. EN_Qwen3-Embedding-1.7B
         model_short = BASE_MODEL_ID.split("/")[-1]
-        # DB_PATH = f"./EN_{model_short}"
         print(f"Loading base model: {BASE_MODEL_ID}")
         tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_ID)
         client = chromadb.PersistentClient(path=DB_PATH)
@@ -117,7 +115,7 @@ def main():
     ensure_csv(LOG_CSV, ["path", "id", "original_tokens", "used_tokens_saved"])
     ensure_csv(FAILED_CSV, ["path", "id", "original_tokens", "last_error"])
 
-    #if you are experimenting only with english files
+    #if experimenting only with english files
     files = list(iter_txt_files(ROOT_DIR))
     if not files:
         print(f"No .txt files under {ROOT_DIR}")
@@ -189,7 +187,6 @@ def main():
             maybe_free_cuda()
             pbar.update(1)
 
-    # print(f"Done. Indexed {total} documents into '{COLLECTION}' at {DB_PATH}")
     print(f"Success log → {LOG_CSV}")
     print(f"Failures log → {FAILED_CSV}")
 
