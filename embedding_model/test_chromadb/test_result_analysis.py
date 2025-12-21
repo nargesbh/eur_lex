@@ -2,13 +2,16 @@ import pandas as pd
 from pathlib import Path
 from collections import defaultdict
 
-def analyze_retrieval(input_csv: str, result_csv: str):
+def analyze_retrieval(input_csv: str, result_csv: str, allow_other_langs: bool = False):
     """
     Analyze retrieval accuracy (Top-1/3/5) from a CSV and save year-wise + overall results.
     
     Args:
         input_csv (str): Path to the input CSV containing retrieval results.
         result_csv (str): Path where the analysis CSV should be saved.
+        allow_other_langs (bool): 
+            - False (default): only the exact language match counts as correct.
+            - True: any language variant of the same document (same year + law + doc ID) counts as correct.
     """
 
     def extract_key(p: str) -> str:
@@ -21,7 +24,21 @@ def analyze_retrieval(input_csv: str, result_csv: str):
                 return "/".join(parts[i:i+3]).replace(".jsonl", "").replace(".txt", "")
         return ""
 
-    # --- Load data ---
+    def base_doc_key(key: str) -> str:
+        """
+        Convert 'YYYY/lawXXXX/32007D0364_LV' -> 'YYYY/lawXXXX/32007D0364'.
+        Used when allow_other_langs=True to ignore language suffixes.
+        """
+        if not isinstance(key, str) or not key:
+            return ""
+        parts = key.split("/")
+        last = parts[-1]
+        # If there's a language suffix like _LV, _EN, etc., drop it
+        if "_" in last:
+            last = last.split("_", 1)[0]
+        parts[-1] = last
+        return "/".join(parts)
+
     df = pd.read_csv(input_csv)
 
     # --- Normalize paths ---
@@ -34,19 +51,38 @@ def analyze_retrieval(input_csv: str, result_csv: str):
     top1 = top3 = top5 = 0
     per_year = defaultdict(lambda: {"total": 0, "top1": 0, "top3": 0, "top5": 0})
 
-    # --- Evaluate ---
     for _, row in df.iterrows():
         key_meta = row["key_meta"]
         if not key_meta:
             continue
+
+        # Year = first segment of the key: '2007/law.../...' -> '2007'
         year = key_meta.split("/")[0]
         per_year[year]["total"] += 1
-        candidates = [row[f"key_{i}"] for i in range(1, 6) if isinstance(row[f"key_{i}"], str)]
+
+        # Build candidate list
+        candidates = [
+            row[f"key_{i}"] 
+            for i in range(1, 6) 
+            if isinstance(row[f"key_{i}"], str)
+        ]
+
         correct_rank = None
-        for idx, c in enumerate(candidates, start=1):
-            if c == key_meta:
-                correct_rank = idx
-                break
+
+        if allow_other_langs:
+            # Compare by document base ID, ignoring language suffix
+            base_meta = base_doc_key(key_meta)
+            for idx, c in enumerate(candidates, start=1):
+                if base_doc_key(c) == base_meta:
+                    correct_rank = idx
+                    break
+        else:
+            # Exact key match (same language)
+            for idx, c in enumerate(candidates, start=1):
+                if c == key_meta:
+                    correct_rank = idx
+                    break
+
         if correct_rank:
             if correct_rank == 1:
                 top1 += 1
@@ -58,7 +94,6 @@ def analyze_retrieval(input_csv: str, result_csv: str):
                 top5 += 1
                 per_year[year]["top5"] += 1
 
-    # --- Compute overall stats ---
     def pct(n): 
         return 100 * n / total if total else 0
 
@@ -70,7 +105,6 @@ def analyze_retrieval(input_csv: str, result_csv: str):
         "total": total,
     }
 
-    # --- Prepare year-wise data ---
     year_rows = [overall]
     for year, stats in sorted(per_year.items()):
         t = stats["total"]
@@ -84,11 +118,11 @@ def analyze_retrieval(input_csv: str, result_csv: str):
             "total": t,
         })
 
-    # --- Save CSV ---
     pd.DataFrame(year_rows).to_csv(result_csv, index=False)
 
-    # --- Print summary ---
+    mode_str = "MULTI-LANG (accept all languages for same doc)" if allow_other_langs else "EXACT (same language only)"
     print("Accuracy evaluation for embedding retrieval model")
+    print(f"Mode: {mode_str}")
     print(f"Input file: {input_csv}")
     print(f"Total samples: {total}")
     print(f"Top-1 accuracy: {pct(top1):.2f}%")
@@ -98,7 +132,234 @@ def analyze_retrieval(input_csv: str, result_csv: str):
 
 
 # Example usage:
+
+# #########DE
+analyze_retrieval(
+    "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/LV/MT/Qwen3_4B_fine_tune.csv",
+    "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/LV/MT/Qwen3_4B_fine_tune_analysis.csv",
+    allow_other_langs=False,
+)
+
 # analyze_retrieval(
-#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/EN_SFR-Embedding-Mistral/english_top5_retrieval.csv",
-#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/EN_SFR-Embedding-Mistral/analysis.csv"
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/DE/EN/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/DE/EN/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/DE/EN/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/DE/EN/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/DE/EN/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/DE/EN/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/DE/EN/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/DE/EN/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/DE/EN/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/DE/EN/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+
+# # ############EN
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/MT/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/MT/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/MT/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/MT/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/MT/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/MT/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/MT/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/MT/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/MT/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/MT/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/MT/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/MT/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+# ###
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/DE/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/DE/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/DE/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/DE/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/DE/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/DE/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/DE/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/DE/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/DE/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/DE/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/DE/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/DE/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+
+
+# ######FR
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/FR/EN/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/FR/EN/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/FR/EN/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/FR/EN/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/FR/EN/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/FR/EN/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/FR/EN/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/FR/EN/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/FR/EN/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/FR/EN/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/FR/EN/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/FR/EN/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# # #####LV
+
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/LV/MT/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/LV/MT/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/LV/MT/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/LV/MT/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/LV/MT/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/LV/MT/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/LV/MT/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/LV/MT/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/LV/MT/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/LV/MT/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/LV/MT/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/LV/MT/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+
+# # # #####MT
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/MT/FR/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/MT/FR/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/MT/FR/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/MT/FR/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/MT/FR/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/MT/FR/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/MT/FR/e5_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/MT/FR/e5_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/MT/FR/Qwen3_4B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/MT/FR/Qwen3_4B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
+# )
+
+# analyze_retrieval(
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/MT/FR/Qwen3_06B_fine_tune.csv",
+#     "/ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/MT/FR/Qwen3_06B_fine_tune_analysis.csv",
+#     allow_other_langs=False,
 # )
