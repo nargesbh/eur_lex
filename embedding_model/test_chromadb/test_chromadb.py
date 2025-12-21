@@ -1,12 +1,12 @@
 # CUDA_VISIBLE_DEVICES=1 \
 # python test_chromadb.py \
 #   --mode test \
-#   --csv-path /ltstorage/shares/datasets/eu/category15/metadata_results.csv \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/≥/EN_multilingual-e5-large-instruct/test.jsonl \
-#   --chroma-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/LV-EN/fine_tuned_test_instances_EN/multilingual-e5-large-instruct \
+#   --csv-path metadata_results.csv \
+#   --test-jsonl embedding_model/fine_tuning/tunning_data/≥/EN_multilingual-e5-large-instruct/test.jsonl \
+#   --chroma-path embedding_model/chroma_DBs/LV-EN/fine_tuned_test_instances_EN/multilingual-e5-large-instruct \
 #   --collection cat15 \
-#   --model-id /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/LV-EN/multilingual-e5-large-instruct/output_mnr/best_model \
-#   --output-path /ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/LV-EN/multilingual-e5-large-instruct/fine_tune_englishTests.csv \
+#   --model-idembedding_model/fine_tuning/tunning_data/LV-EN/multilingual-e5-large-instruct/output_mnr/best_model \
+#   --output-path embedding_model/test_chromadb/full_dataset_searchTest/LV-EN/multilingual-e5-large-instruct/fine_tune_englishTests.csv \
 #   --device cuda
 
 #!/usr/bin/env python3
@@ -316,75 +316,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# CUDA_VISIBLE_DEVICES=2 \
-# python test_chromadb.py \
-#   --mode test \
-#   --csv-path /ltstorage/shares/datasets/eu/category15/metadata_results.csv \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/DE/multilingual-e5-large-instruct/test.jsonl \
-#   --chroma-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/EN/fine_tuned_DE/multilingual-e5-large-instruct \
-#   --collection cat15 \
-#   --model-id /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/multilingual-e5-large-instruct/output_mnr/best_model \
-#   --output-path /ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/DE/e5_fine_tune.csv \
-#   --device cuda
-
-# CUDA_VISIBLE_DEVICES=0 \
-# python test_chromadb.py \
-#   --mode test \
-#   --csv-path /ltstorage/shares/datasets/eu/category15/metadata_results.csv \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/MT/Qwen3_4B/test.jsonl \
-#   --chroma-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/LV/fine_tuned_MT/Qwen3_4B \
-#   --collection cat15 \
-#   --model-id /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/LV/Qwen3_4B/output_mnr/best_model \
-#   --output-path /ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/LV/MT/Qwen3_4B_fine_tune.csv \
-#   --device cuda
-
-# CUDA_VISIBLE_DEVICES=1 \
-# python test_chromadb.py \
-#   --mode test \
-#   --csv-path /ltstorage/shares/datasets/eu/category15/metadata_results.csv \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/MT/Qwen3_06B/test.jsonl \
-#   --chroma-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/EN/fine_tuned_DE/Qwen3_06B \
-#   --collection cat15 \
-#   --model-id /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/Qwen3_06B/output_mnr/best_model \
-#   --output-path /ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchTest/EN/DE/Qwen3_06B_fine_tune.csv \
-#   --device cuda
-
-
-
-
-
-# CUDA_VISIBLE_DEVICES=4 \
-# python test_chromadb.py \
-#   --mode test \
-#   --csv-path /ltstorage/shares/datasets/eu/category15/metadata_results.csv \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/DE/multilingual-e5-large-instruct/test.jsonl \
-#   --chroma-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/EN/fine_tuned_test_instances_DE/multilingual-e5-large-instruct \
-#   --collection cat15 \
-#   --model-id /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/multilingual-e5-large-instruct/output_mnr/best_model \
-#   --output-path /ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/DE/e5_fine_tune.csv \
-#   --device cuda
-
-# CUDA_VISIBLE_DEVICES=2 \
-# python test_chromadb.py \
-#   --mode test \
-#   --csv-path /ltstorage/shares/datasets/eu/category15/metadata_results.csv \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/DE/Qwen3_4B/test.jsonl \
-#   --chroma-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/EN/fine_tuned_test_instances_DE/Qwen3_4B \
-#   --collection cat15 \
-#   --model-id /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/Qwen3_4B/output_mnr/best_model \
-#   --output-path /ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/DE/Qwen3_4B_fine_tune.csv \
-#   --device cuda
-
-# CUDA_VISIBLE_DEVICES=1 \
-# python test_chromadb.py \
-#   --mode test \
-#   --csv-path /ltstorage/shares/datasets/eu/category15/metadata_results.csv \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/DE/Qwen3_06B/test.jsonl \
-#   --chroma-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/EN/fine_tuned_test_instances_DE/Qwen3_06B \
-#   --collection cat15 \
-#   --model-id /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/Qwen3_06B/output_mnr/best_model \
-#   --output-path /ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/test_dataset_searchTest/EN/DE/Qwen3_06B_fine_tune.csv \
-#   --device cuda
-

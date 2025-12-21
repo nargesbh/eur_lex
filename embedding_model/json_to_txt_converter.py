@@ -4,10 +4,10 @@ import json
 from pathlib import Path
 from tqdm import tqdm
 
-INPUT_ROOT = Path("/ltstorage/shares/datasets/eu/category15/json_category15")
-OUTPUT_ROOT = Path("/ltstorage/shares/datasets/eu/category15/txt_of_json")
-METADATA_CSV = Path("/ltstorage/shares/datasets/eu/category15/metadata_results.csv")
-CHECK_CSV = Path("/ltstorage/shares/datasets/eu/category15/check_files.csv")
+INPUT_ROOT = Path("")
+OUTPUT_ROOT = Path("")
+METADATA_CSV = Path("metadata_results.csv")
+CHECK_CSV = Path("")
 
 
 def load_metadata_map(csv_path: Path) -> dict:

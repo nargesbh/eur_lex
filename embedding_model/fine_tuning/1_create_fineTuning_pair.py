@@ -9,19 +9,9 @@ from tqdm import tqdm
 # Example:
 # python 1_createfineTuning_pairs.py /path/to/english_top5_retrieval.csv /path/to/output.jsonl
 
-# python 1_create_fineTuning_pair.py \
-#     /ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchAll/LV/Qwen3_4B/original_model_top5.csv \
-#     /ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/LV/Qwen3_4B/pairs.jsonl
-
-# python 1_create_fineTuning_pair.py \
-#     /ltstorage/home/4baba/EUR_lex/embedding_model/test_chromadb/full_dataset_searchAll/MT/Qwen3_4B/original_model_top5.csv \
-#     /ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/MT/Qwen3_4B/pairs.jsonl
-
-
-
 
 # === CONFIG ===
-META_FILE = "/ltstorage/shares/datasets/eu/category15/metadata_results.csv"
+META_FILE = ""
 # ==============
 
 # --- Parse CLI arguments ---

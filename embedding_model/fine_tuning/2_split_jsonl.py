@@ -3,8 +3,8 @@ import random
 from pathlib import Path
 
 # === CONFIG ===
-INPUT_FILE = "/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/EN_Linq-Embed-Mistral/pairs.jsonl"
-OUTPUT_DIR = Path("/ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/EN_Qwen3_Embedding_06B/qwen3_0.6b_lora")
+INPUT_FILE = ""
+OUTPUT_DIR = Path("")
 TRAIN_FILE = OUTPUT_DIR / "full_train_pairs.jsonl"
 VAL_FILE   = OUTPUT_DIR / "full_val_pairs.jsonl"
 TEST_FILE  = OUTPUT_DIR / "full_test_pairs.jsonl"

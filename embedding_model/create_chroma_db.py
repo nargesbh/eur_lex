@@ -21,10 +21,10 @@ from sentence_transformers import SentenceTransformer
 # ---- DEFAULT CONFIG (can be overridden via CLI) ----
 
 # Used for generating relative IDs
-ROOT_DIR = "/ltstorage/shares/datasets/eu/category15/txt_of_json"
+ROOT_DIR = ""
 
 # JSONL base dir used inside query_path
-JSONL_BASE_DIR = "/ltstorage/shares/datasets/eu/category15/json_category15"
+JSONL_BASE_DIR = ""
 
 # Default path to a test JSONL file (can be overridden or left unused)
 TEST_JSONL_PATH = ""
@@ -513,87 +513,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# CUDA_VISIBLE_DEVICES=2 \
-# python create_chroma_db.py \
-#   --use-finetuned \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/DE/multilingual-e5-large-instruct/pairs.jsonl \
-#   --finetune-model-path /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/EN_multilingual-e5-large-instruct/output_mnr/best_model \
-#   --finetune-db-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/EN/fine_tuned_DE/multilingual-e5-large-instruct \
-#   --finetune-collection cat15 \
-#   --from-testset
-
-
-# CUDA_VISIBLE_DEVICES=2 \
-# python create_chroma_db.py \
-#   --use-finetuned \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/DE/Qwen3_06B/pairs.jsonl \
-#   --finetune-model-path /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/EN_Qwen3_Embedding_06B/output_mnr/best_model \
-#   --finetune-db-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/EN/fine_tuned_DE/Qwen3_06B \
-#   --finetune-collection cat15 \
-#   --from-testset
-
-
-# CUDA_VISIBLE_DEVICES=1 \
-# python create_chroma_db.py \
-#   --use-finetuned \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/MT/Qwen3_4B/pairs.jsonl \
-#   --finetune-model-path /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/LV/Qwen3_4B/output_mnr/best_model \
-#   --finetune-db-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/LV/fine_tuned_MT/Qwen3_4B \
-#   --finetune-collection cat15 \
-#   --from-testset
-
-
-#################test instances
-
-# CUDA_VISIBLE_DEVICES=4 \
-# python create_chroma_db.py \
-#   --use-finetuned \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/DE/multilingual-e5-large-instruct/test.jsonl \
-#   --finetune-model-path /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/EN_multilingual-e5-large-instruct/output_mnr/best_model \
-#   --finetune-db-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/EN/fine_tuned_test_instances_DE/multilingual-e5-large-instruct \
-#   --finetune-collection cat15 \
-#   --from-testset
-
-
-# CUDA_VISIBLE_DEVICES=4 \
-# python create_chroma_db.py \
-#   --use-finetuned \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/DE/Qwen3_06B/test.jsonl \
-#   --finetune-model-path /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/EN_Qwen3_Embedding_06B/output_mnr/best_model \
-#   --finetune-db-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/EN/fine_tuned_test_instances_DE/Qwen3_06B \
-#   --finetune-collection cat15 \
-#   --from-testset
-
-
-# CUDA_VISIBLE_DEVICES=1 \
-# python create_chroma_db.py \
-#   --use-finetuned \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/DE/Qwen3_4B/test.jsonl \
-#   --finetune-model-path /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/EN_Qwen3-Embedding-4B/output_mnr/best_model \
-#   --finetune-db-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/EN/fine_tuned_test_instances_DE/Qwen3_4B \
-#   --finetune-collection cat15 \
-#   --from-testset
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# CUDA_VISIBLE_DEVICES=3 \
-# python create_chroma_db.py \
-#   --use-base \
-#   --test-jsonl /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/DE-EN/Qwen3_4B/test.jsonl \
-#   --base-model-id Qwen/Qwen3-Embedding-4B \
-#   --db-path /ltstorage/home/4baba/EUR_lex/embedding_model/chroma_DBs/DE-EN/original_test_instances/Qwen3_4B \
-#   --collection cat15 \
-#   --from-testset

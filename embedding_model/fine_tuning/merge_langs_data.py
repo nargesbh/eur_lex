@@ -145,19 +145,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-# python merge_langs_data.py \
-# --en-train /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/EN_Qwen3-Embedding-4B/train.jsonl \
-# --lv-train /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/LV/Qwen3_4B/train.jsonl \
-# --out /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/LV-EN/Qwen3_4B/train.jsonl
-
-
-# python merge_langs_data.py \
-# --en-train /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/EN_Qwen3-Embedding-4B/test.jsonl \
-# --lv-train /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/LV/Qwen3_4B/test.jsonl \
-# --out /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/LV-EN/Qwen3_4B/test.jsonl
-
-# python merge_langs_data.py \
-# --en-train /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/EN/EN_Qwen3-Embedding-4B/val.jsonl \
-# --lv-train /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/LV/Qwen3_4B/val.jsonl \
-# --out /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/LV-EN/Qwen3_4B/val.jsonl

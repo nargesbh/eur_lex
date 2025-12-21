@@ -6,7 +6,7 @@ from collections import defaultdict, Counter
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
-HTML_ROOT = Path("/ltstorage/home/4baba/EUR_lex/htmls_2024")
+HTML_ROOT = Path("")
 OUTPUT_DIR = Path("./language_dictionaries2")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

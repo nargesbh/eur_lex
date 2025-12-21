@@ -40,6 +40,6 @@ def find_pages_with_tables(input_root: str, output_csv: str):
 
 if __name__ == "__main__":
     find_pages_with_tables(
-        input_root="/ltstorage/shares/datasets/eu/category15/json_category15",
-        output_csv="/ltstorage/shares/datasets/eu/category15/json_pages_with_tables.csv"
+        input_root="",
+        output_csv=""
     )

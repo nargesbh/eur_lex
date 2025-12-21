@@ -1,12 +1,4 @@
-# # Models to try: 
-# # Qwen/Qwen3-Embedding-0.6B 16bit / batch 2
-# # Salesforce/SFR-Embedding-Mistral 16 / batch 2 
-# # Qwen/Qwen3-Embedding-4B 16bit / batch 2 
-# # Linq-AI-Research/Linq-Embed-Mistral 16 bit / batch 2 
-# # intfloat/multilingual-e5-large-instruct max_token = 512 / batch 4
- 
 
-#!/usr/bin/env python3
 import os
 import sys
 import json
@@ -29,37 +21,12 @@ except Exception:
     _USE_WANDB = False
 # --------------------------------------
 
-# ===========================================
-
 
 # CUDA_VISIBLE_DEVICES=3 python fine_tune_full.py \
-#   /ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/DE/Qwen3_4B \
+#   embedding_model/fine_utning/tunning_data/DE/Qwen3_4B \
 #   Qwen/Qwen3-Embedding-4B \
 #   DE-Qwen3-4B
 
-# ===========================================
-
-# CUDA_VISIBLE_DEVICES=1 python fine_tune_full.py \
-#   /ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/MT/multilingual-e5-large-instruct \
-#   intfloat/multilingual-e5-large-instruct \
-#   MT-multilingual-e5
-
-# ===========================================
-
-
-# CUDA_VISIBLE_DEVICES=1 python fine_tune_full.py \
-#   /ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/LV/Qwen3_4B \
-#   Qwen/Qwen3-Embedding-4B \
-#   LV-Qwen3-4B
-
-
-# ===========================================
-
-
-# CUDA_VISIBLE_DEVICES=2 python fine_tune_full.py \
-#   /ltstorage/home/4baba/EUR_lex/embedding_model/fine_utning/tunning_data/MT/Qwen3_4B \
-#   Qwen/Qwen3-Embedding-4B \
-#   MT-Qwen3-4B
 
 if len(sys.argv) < 3:
     print("Usage: python fine_tune_full.py <DATA_DIR> <MODEL_ID> [RUN_NAME]")

@@ -3,9 +3,9 @@ from pathlib import Path
 from tqdm import tqdm
 
 # Paths
-mmd_dir = Path("/ltstorage/shares/datasets/eu/category15/nougat_mmd")
-pdf_base_dir = Path("/ltstorage/shares/datasets/eu/category15/pdfs_category15")
-output_base = Path("/ltstorage/shares/datasets/eu/category15/nougat_correct_path")
+mmd_dir = Path("")
+pdf_base_dir = Path("")
+output_base = Path("")
 
 # Go through all .mmd files
 mmd_files = list(mmd_dir.glob("*.mmd"))

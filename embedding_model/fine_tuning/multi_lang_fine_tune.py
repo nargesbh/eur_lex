@@ -24,7 +24,7 @@ except Exception:
 # ===========================================
 # USAGE:
 # CUDA_VISIBLE_DEVICES=3 python multi_lang_fine_tune.py \
-#   /ltstorage/home/4baba/EUR_lex/embedding_model/fine_tuning/tunning_data/LV-EN/Qwen3_4B \
+#   embedding_model/fine_tuning/tunning_data/LV-EN/Qwen3_4B \
 #   Qwen/Qwen3-Embedding-4B \
 #   multi-EN-LV-Qwen3_4B
 # ===========================================

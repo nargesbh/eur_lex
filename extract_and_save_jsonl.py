@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 
 # Input/output directories
-source_dir = Path("/ltstorage/shares/datasets/eu/category15/localworkspace_leftovers/results")
-output_base = Path("/ltstorage/shares/datasets/eu/category15/json_category15")
+source_dir = Path("")
+output_base = Path("")
 
 def get_output_path(source_file):
     try:

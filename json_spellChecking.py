@@ -5,9 +5,9 @@ from spellchecker import SpellChecker
 from tqdm import tqdm
 
 # === Config Paths ===
-json_input_root = Path("/ltstorage/home/4baba/EUR_lex/converted_json")
-json_output_root = Path("/ltstorage/home/4baba/EUR_lex/spell_checked_json_2")
-dict_dir = Path("/ltstorage/home/4baba/EUR_lex/filtered_language_dictionaries")
+json_input_root = Path("")
+json_output_root = Path("")
+dict_dir = Path("")
 
 # === SpellChecker Cache ===
 spellcheckers = {}

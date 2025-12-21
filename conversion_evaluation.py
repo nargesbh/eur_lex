@@ -174,5 +174,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-# python conversion_evaluation.py /ltstorage/shares/datasets/eu/category15/html_pymupdf_category15 /ltstorage/shares/datasets/eu/category15/htmls_category15 /ltstorage/shares/datasets/eu/category15/evaluation/pymupdf_all_metrics.csv
