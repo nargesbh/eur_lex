@@ -16,7 +16,7 @@ These scripts prepare the dataset and run quality checks. They support different
 
 ### Quality evaluation
 - **`json_evaluation_content2.py`**  
-  Evaluates extracted JSON content against a reference representation (content-level similarity / coverage).
+  Evaluates extracted JSON content against a reference representation (content-level similarity).
 ---
 
 ## 2) Embedding and retrieval (`embedding_model/`)
