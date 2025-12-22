@@ -1,16 +1,79 @@
 # EUR-Lex Embedding Fine-Tuning and Retrieval
 
-This repository contains the code used to preprocess EUR-Lex legal documents, fine-tune embedding models on legislative text, and evaluate metadata-to-document retrieval performance.
+This repository contains the code used to (1) preprocess EUR-Lex documents, (2) build training data and contrastive fine-tuning, (3) create a ChromaDB vector index, and (4) evaluate metadata-to-document retrieval.
 
-The preprocessing pipeline converts EUR-Lex PDFs into structured JSONL files. This includes PDF-to-HTML conversion,  extraction of textual content, and quality checks against ground-truth HTML. These steps are implemented in the scripts located in the root directory.
+The repository includes multiple conversion/evaluation utilities (e.g., alternative conversion routes and quality checks). In the final pipeline used for the paper, we rely on **olmOCR for PDF-to-text extraction** and produce **structured JSONL** as the main intermediate representation for the embedding and retrieval experiments.
 
-All embedding-related code is contained in the `embedding_model/` directory. This includes scripts for extracting metadata and creating ChromaDB vector indices for contrastive learning.
+---
 
-The `embedding_model/fine_tuning/` folder contains the scripts used to construct query–document pairs and perform monolingual and multilingual contrastive fine-tuning of embedding models.
+## 1) Preprocessing and dataset preparation (root-level scripts)
 
-The `embedding_model/test_chromadb/` folder contains scripts for evaluating retrieval performance using a ChromaDB vector index under different search settings.
+These scripts prepare the dataset and run quality checks. They support different conversion and evaluation steps; the core goal is to produce clean, structured representations of legal acts for downstream retrieval.
 
-External tools used for document processing and scraping are included under nougat/, olmocr/, and eur-lex-sum/. File paths were generalized to prepare the code for submission, and trained model checkpoints are not included. edit this part nougat/, olmocr/ are two tools i used for pdf to txt conversion and eur-lex-sum/ is for scrapping the website
+### Core extraction / preparation
+- **`extract_and_save_jsonl.py`**  
+  Produces structured JSONL documents from processed sources. This is the main preprocessing output used by the embedding pipeline.
+
+### Quality evaluation
+- **`json_evaluation_content2.py`**  
+  Evaluates extracted JSON content against a reference representation (content-level similarity / coverage).
+---
+
+## 2) Embedding and retrieval (`embedding_model/`)
+
+All code related to embedding models, fine-tuning, indexing, and retrieval evaluation lives under `embedding_model/`.
+
+### 2.1 Data preparation for retrieval and training
+- **`extract_metadata.py`**  
+  Extracts the metadata block used as the *query* for metadata-to-document retrieval.
+
+- **`json_to_txt_converter.py`**  
+  Converts structured documents into plain-text representations used for indexing and retrieval.
+
+---
+
+## 3) Fine-tuning (`embedding_model/fine_tuning/`)
+
+This folder contains scripts for constructing training data and running contrastive fine-tuning.
+
+- **`1_create_fineTuning_pair.py`**  
+  Creates contrastive training examples by pairing metadata queries with their matching documents (positives) and adding non-matching documents as negatives.
+
+- **`2_split_jsonl.py`**  
+  Splits the prepared dataset into training/validation/test partitions for controlled experiments.
+
+- **`merge_langs_data.py`**  
+  Combines data across languages to enable multilingual training runs.
+
+- **`fine_tune_full.py`**  
+  Runs monolingual fine-tuning for a selected language/model configuration.
+
+- **`multi_lang_fine_tune.py`**  
+  Runs multilingual fine-tuning using merged multi-language training data.
+
+---
+
+## 4) Retrieval evaluation (`embedding_model/test_chromadb/`)
+
+This folder runs retrieval experiments against a ChromaDB index and summarizes Top-k accuracy.
+
+- **`create_chroma_db.py`**  
+  Builds a ChromaDB vector index for a document collection using a selected fine tuned model. This index is used for retrieval experiments.
+
+- **`test_chromadb.py`**  
+  Executes retrieval by embedding queries, searching the vector index, and storing ranked retrieval outputs.
+
+- **`test_result_analysis.py`**  
+  Aggregates retrieval outputs and computes metrics (e.g., Top-1/Top-3/Top-5 accuracy), producing results used for tables/figures.
+
+---
+
+## External tools
+
+- **`nougat/`** and **`olmocr/`**: third-party tools used for **PDF-to-text conversion** during document preprocessing.  
+- **`eur-lex-sum/`**: utilities for **scraping** documents and metadata from the EUR-Lex website.
+
+---
 
 ## License
 
