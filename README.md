@@ -11,3 +11,7 @@ The `embedding_model/fine_tuning/` folder contains the scripts used to construct
 The `embedding_model/test_chromadb/` folder contains scripts for evaluating retrieval performance using a ChromaDB vector index under different search settings.
 
 External tools used for document processing and scraping are included under nougat/, olmocr/, and eur-lex-sum/. File paths were generalized to prepare the code for submission, and trained model checkpoints are not included. edit this part nougat/, olmocr/ are two tools i used for pdf to txt conversion and eur-lex-sum/ is for scrapping the website
+
+## License
+
+This project is released under the **MIT License**. See the `LICENSE` file for details.
