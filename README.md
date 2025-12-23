@@ -73,7 +73,17 @@ This folder runs retrieval experiments against a ChromaDB index and summarizes T
 - **`nougat/`** and **`olmocr/`**: third-party tools used for **PDF-to-text conversion** during document preprocessing.  
 - **`eur-lex-sum/`**: utilities for **scraping** documents and metadata from the EUR-Lex website.
 
+
 ---
+
+## Data availability
+
+The dataset used in this work will be released after the paper review process.  
+Due to its size, the full dataset could not be uploaded as part of the OpenReview submission and is therefore not publicly accessible during review. Upon acceptance, we will make the data available via an appropriate hosting platform and update this repository with access instructions.
+
+
+---
+
 
 ## License
 
